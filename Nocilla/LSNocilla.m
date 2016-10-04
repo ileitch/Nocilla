@@ -12,6 +12,7 @@ NSString * const LSUnexpectedRequest = @"Unexpected Request";
 @property (nonatomic, strong) NSMutableArray *mutableRequests;
 @property (nonatomic, strong) NSMutableArray *hooks;
 @property (nonatomic, assign, getter = isStarted) BOOL started;
+@property (nonatomic, strong) dispatch_queue_t stubsQueue;
 
 - (void)loadHooks;
 - (void)unloadHooks;
@@ -32,6 +33,7 @@ static LSNocilla *sharedInstace = nil;
 - (id)init {
     self = [super init];
     if (self) {
+        _stubsQueue = dispatch_queue_create("stubsQueue", DISPATCH_QUEUE_SERIAL);
         _mutableRequests = [NSMutableArray array];
         _hooks = [NSMutableArray array];
         [self registerHook:[[LSNSURLHook alloc] init]];
@@ -72,11 +74,25 @@ static LSNocilla *sharedInstace = nil;
 }
 
 - (void)clearStubs {
-    [self.mutableRequests removeAllObjects];
+    [self clearStubsWithBlock:nil];
+}
+
+- (void)clearStubsWithBlock:(void (^)())block {
+    dispatch_sync(self.stubsQueue, ^{
+        [self.mutableRequests removeAllObjects];
+
+        if (block) {
+            block();
+        }
+    });
 }
 
 - (LSStubResponse *)responseForRequest:(id<LSHTTPRequest>)actualRequest {
-    NSArray* requests = [LSNocilla sharedInstance].stubbedRequests;
+    __block NSArray* requests;
+
+    dispatch_sync(self.stubsQueue, ^{
+        requests = [[LSNocilla sharedInstance].stubbedRequests copy];
+    });
 
     for(LSStubRequest *someStubbedRequest in requests) {
         if ([someStubbedRequest matchesRequest:actualRequest]) {

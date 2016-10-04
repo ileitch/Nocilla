@@ -18,6 +18,7 @@ extern NSString * const LSUnexpectedRequest;
 - (void)stop;
 - (void)addStubbedRequest:(LSStubRequest *)request;
 - (void)clearStubs;
+- (void)clearStubsWithBlock:(void (^)())block;
 
 - (void)registerHook:(LSHTTPClientHook *)hook;
 
