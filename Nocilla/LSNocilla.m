@@ -83,7 +83,10 @@ static LSNocilla *sharedInstace = nil;
             return someStubbedRequest.response;
         }
     }
-    [NSException raise:@"NocillaUnexpectedRequest" format:@"An unexpected HTTP request was fired.\n\nUse this snippet to stub the request:\n%@\n", [[[LSHTTPRequestDSLRepresentation alloc] initWithRequest:actualRequest] description]];
+
+    dispatch_sync(dispatch_get_main_queue(), ^{
+        [NSException raise:@"NocillaUnexpectedRequest" format:@"An unexpected HTTP request was fired.\n\nUse this snippet to stub the request:\n%@\n", [[[LSHTTPRequestDSLRepresentation alloc] initWithRequest:actualRequest] description]];
+    });
 
     return nil;
 }
