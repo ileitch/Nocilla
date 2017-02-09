@@ -13,6 +13,8 @@ NSString * const LSUnexpectedRequest = @"Unexpected Request";
 @property (nonatomic, strong) NSMutableArray *hooks;
 @property (nonatomic, assign, getter = isStarted) BOOL started;
 @property (nonatomic, strong) dispatch_queue_t stubsQueue;
+@property (nonatomic, assign) BOOL stubbingAllowed;
+@property (nonatomic, strong) NSString *stubbingDisallowedMessage;
 
 - (void)loadHooks;
 - (void)unloadHooks;
@@ -36,6 +38,8 @@ static LSNocilla *sharedInstace = nil;
         _stubsQueue = dispatch_queue_create("stubsQueue", DISPATCH_QUEUE_SERIAL);
         _mutableRequests = [NSMutableArray array];
         _hooks = [NSMutableArray array];
+        _stubbingAllowed = YES;
+        _stubbingDisallowedMessage = @"";
         [self registerHook:[[LSNSURLHook alloc] init]];
         if (NSClassFromString(@"NSURLSession") != nil) {
             [self registerHook:[[LSNSURLSessionHook alloc] init]];
@@ -62,7 +66,20 @@ static LSNocilla *sharedInstace = nil;
     self.started = NO;
 }
 
+- (void)allowStubbing {
+    self.stubbingAllowed = YES;
+}
+
+- (void)disallowStubbingWithMessage:(NSString *)message {
+    self.stubbingAllowed = NO;
+    self.stubbingDisallowedMessage = message;
+}
+
 - (void)addStubbedRequest:(LSStubRequest *)request {
+    if (!self.stubbingAllowed) {
+        [NSException raise:@"NocillaStubbingDisallowedException" format:@"%@", self.stubbingDisallowedMessage];
+    }
+
     NSUInteger index = [self.mutableRequests indexOfObject:request];
 
     if (index == NSNotFound) {
